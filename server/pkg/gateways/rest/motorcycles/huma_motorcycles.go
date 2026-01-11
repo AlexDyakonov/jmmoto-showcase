@@ -51,10 +51,10 @@ func authenticateUserFromToken(ctx context.Context, token string, userCase *usec
 // Public handlers
 
 type GetMotorcyclesInput struct {
-	Status   *string  `query:"status" doc:"Filter by status (available, reserved, sold)"`
-	Title    *string  `query:"title" doc:"Filter by title (partial match)"`
-	MinPrice *float64 `query:"minPrice" doc:"Minimum price"`
-	MaxPrice *float64 `query:"maxPrice" doc:"Maximum price"`
+	Status   string  `query:"status" doc:"Filter by status (available, reserved, sold)"`
+	Title    string  `query:"title" doc:"Filter by title (partial match)"`
+	MinPrice float64 `query:"minPrice" doc:"Minimum price"`
+	MaxPrice float64 `query:"maxPrice" doc:"Maximum price"`
 }
 
 type GetMotorcyclesOutput struct {
@@ -67,18 +67,18 @@ func GetMotorcyclesHandler(motorcycleCase *usecase.Motorcycle) func(ctx context.
 			IncludePhotos: true,
 		}
 
-		if input.Status != nil {
-			status := domain.MotorcycleStatus(*input.Status)
+		if input.Status != "" {
+			status := domain.MotorcycleStatus(input.Status)
 			filter.Status = &status
 		}
-		if input.Title != nil {
-			filter.Title = input.Title
+		if input.Title != "" {
+			filter.Title = &input.Title
 		}
-		if input.MinPrice != nil {
-			filter.MinPrice = input.MinPrice
+		if input.MinPrice > 0 {
+			filter.MinPrice = &input.MinPrice
 		}
-		if input.MaxPrice != nil {
-			filter.MaxPrice = input.MaxPrice
+		if input.MaxPrice > 0 {
+			filter.MaxPrice = &input.MaxPrice
 		}
 
 		motorcycles, err := motorcycleCase.ListMotorcycles(ctx, filter)

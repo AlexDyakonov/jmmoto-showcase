@@ -113,7 +113,8 @@ func (r *MotorcycleRepo) Filter(ctx context.Context, filter *domain.FilterMotorc
 		s = s.Where(sq.Eq{"m.status": *filter.Status})
 	}
 	if filter.Title != nil {
-		s = s.Where(sq.Like{"m.title": "%" + *filter.Title + "%"})
+		// Используем ILIKE для поиска без учета регистра
+		s = s.Where(sq.Expr("LOWER(m.title) LIKE LOWER(?)", "%"+*filter.Title+"%"))
 	}
 	if filter.MinPrice != nil {
 		s = s.Where(sq.GtOrEq{"m.price": *filter.MinPrice})
