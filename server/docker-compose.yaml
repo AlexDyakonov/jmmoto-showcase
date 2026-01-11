@@ -1,9 +1,9 @@
 services:
   database:
     image: postgres:16.7
-    container_name: cats-database
+    container_name: jmmoto-database
     volumes:
-      - cats-db:/var/lib/postgresql/data
+      - jmmoto-db:/var/lib/postgresql/data
     env_file:
       - .env
     ports:
@@ -18,4 +18,4 @@ services:
       - database
 
 volumes:
-  cats-db:
+  jmmoto-db:

@@ -40,7 +40,7 @@ func (r *UserRepo) Create(ctx context.Context, user *domain.CreateUser) (string,
 }
 
 func (r *UserRepo) Filter(ctx context.Context, filter *domain.FilterUser) ([]*domain.User, error) {
-	s := r.psql.Select("id", "telegram_id", "telegram_username", "first_name", "last_name", "avatar").
+	s := r.psql.Select("id", "telegram_id", "telegram_username", "first_name", "last_name", "avatar", "is_admin").
 		From(`"user"`)
 
 	if filter.ID != nil {
@@ -75,6 +75,7 @@ func (r *UserRepo) Filter(ctx context.Context, filter *domain.FilterUser) ([]*do
 			&user.FirstName,
 			&user.LastName,
 			&user.Avatar,
+			&user.IsAdmin,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)

@@ -9,7 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/shampsdev/go-telegram-template/pkg/config"
-	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/cats"
+	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/motorcycles"
 	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/user"
 	"github.com/shampsdev/go-telegram-template/pkg/usecase"
 	"github.com/tj/go-spin"
@@ -27,7 +27,7 @@ type Server struct {
 func NewServer(ctx context.Context, cfg *config.Config, useCases usecase.Cases) *Server {
 	// Set bot token for authentication
 	user.BotToken = cfg.TG.BotToken
-	cats.BotToken = cfg.TG.BotToken
+	motorcycles.BotToken = cfg.TG.BotToken
 	
 	api, router := NewHumaAPI(ctx, useCases)
 

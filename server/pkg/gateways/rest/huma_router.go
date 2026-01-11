@@ -7,14 +7,14 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
-	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/cats"
+	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/motorcycles"
 	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/user"
 	"github.com/shampsdev/go-telegram-template/pkg/usecase"
 )
 
 func setupHumaRouter(api huma.API, useCases usecase.Cases) {
 	user.SetupHuma(api, useCases)
-	cats.SetupHuma(api, useCases)
+	motorcycles.SetupHuma(api, useCases)
 }
 
 func NewHumaAPI(ctx context.Context, useCases usecase.Cases) (huma.API, *chi.Mux) {
@@ -31,8 +31,8 @@ func NewHumaAPI(ctx context.Context, useCases usecase.Cases) (huma.API, *chi.Mux
 
 	apiRouter := chi.NewRouter()
 
-	config := huma.DefaultConfig("Cats API", "1.0.0")
-	config.Info.Description = "Manage chats, users"
+	config := huma.DefaultConfig("Motorcycle Showcase API", "1.0.0")
+	config.Info.Description = "Manage motorcycles showcase"
 	
 	config.Servers = []*huma.Server{
 		{URL: "/api/v1"},

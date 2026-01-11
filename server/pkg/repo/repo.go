@@ -18,11 +18,12 @@ type User interface {
 	Delete(ctx context.Context, id string) error
 }
 
-type Cat interface {
-	Create(ctx context.Context, cat *domain.CreateCat) (string, error)
-	Patch(ctx context.Context, id string, cat *domain.PatchCat) error
-	Filter(ctx context.Context, filter *domain.FilterCat) ([]*domain.Cat, error)
+type Motorcycle interface {
+	Create(ctx context.Context, motorcycle *domain.CreateMotorcycle) (string, error)
+	Patch(ctx context.Context, id string, motorcycle *domain.PatchMotorcycle) error
+	Filter(ctx context.Context, filter *domain.FilterMotorcycle) ([]*domain.Motorcycle, error)
 	Delete(ctx context.Context, id string) error
+	AddPhotos(ctx context.Context, motorcycleID string, photoURLs []string) error
 }
 
 type ImageStorage interface {

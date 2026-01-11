@@ -14,16 +14,16 @@ import (
 	"github.com/shampsdev/go-telegram-template/pkg/utils/slogx"
 )
 
-// @title           Cats server
+// @title           Motorcycle Showcase API
 // @version         1.0
-// @description     Manage chats, users
+// @description     Manage motorcycles showcase
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name X-API-Token
 func main() {
 	cfg := config.Load(".env")
 	log := cfg.Logger()
-	log.Info("Hello from Cats server!")
+	log.Info("Hello from Motorcycle Showcase server!")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()

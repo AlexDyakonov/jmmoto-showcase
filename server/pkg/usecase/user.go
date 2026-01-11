@@ -42,9 +42,12 @@ func (u *User) Create(ctx context.Context, userTGData *domain.UserTGData) (*doma
 	}
 
 	var err error
-	user.Avatar, err = u.storage.SaveImageByURL(ctx, user.Avatar, names.ForUserAvatar(user.TelegramID, user.Avatar))
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload user avatar: %w", err)
+	// Загружаем аватар только если URL не пустой
+	if user.Avatar != "" {
+		user.Avatar, err = u.storage.SaveImageByURL(ctx, user.Avatar, names.ForUserAvatar(user.TelegramID, user.Avatar))
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload user avatar: %w", err)
+		}
 	}
 
 	id, err := u.userRepo.Create(ctx, user)
@@ -63,9 +66,12 @@ func (u *User) CreateMe(ctx ContextWithTGData, createUser *domain.CreateUser) (*
 	createUser.UserTGData = *ctx.UserTGData
 	
 	var err error
-	createUser.Avatar, err = u.storage.SaveImageByURL(ctx, createUser.Avatar, names.ForUserAvatar(createUser.TelegramID, createUser.Avatar))
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload user avatar: %w", err)
+	// Загружаем аватар только если URL не пустой
+	if createUser.Avatar != "" {
+		createUser.Avatar, err = u.storage.SaveImageByURL(ctx, createUser.Avatar, names.ForUserAvatar(createUser.TelegramID, createUser.Avatar))
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload user avatar: %w", err)
+		}
 	}
 
 	id, err := u.userRepo.Create(ctx, createUser)
@@ -92,9 +98,12 @@ func (u *User) GetByTGData(ctx context.Context, tgData *domain.UserTGData) (*dom
 		return nil, err
 	}
 
-	tgData.Avatar, err = u.telegramAvatarLocation(tgData.Avatar)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user avatar: %w", err)
+	// Получаем локацию аватара только если URL не пустой
+	if tgData.Avatar != "" {
+		tgData.Avatar, err = u.telegramAvatarLocation(tgData.Avatar)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user avatar: %w", err)
+		}
 	}
 
 	needUpdate := false
@@ -102,8 +111,8 @@ func (u *User) GetByTGData(ctx context.Context, tgData *domain.UserTGData) (*dom
 		needUpdate = true
 	}
 
-	// if avatar changed
-	if !strings.Contains(user.Avatar, names.ForUserAvatar(user.TelegramID, tgData.Avatar)) {
+	// if avatar changed and new avatar is not empty
+	if tgData.Avatar != "" && !strings.Contains(user.Avatar, names.ForUserAvatar(user.TelegramID, tgData.Avatar)) {
 		var err error
 		tgData.Avatar, err = u.storage.SaveImageByURL(ctx, tgData.Avatar, names.ForUserAvatar(user.TelegramID, tgData.Avatar))
 		user.Avatar = tgData.Avatar

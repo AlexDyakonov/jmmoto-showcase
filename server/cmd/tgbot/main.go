@@ -14,7 +14,7 @@ import (
 func main() {
 	cfg := config.Load(".env")
 	log := cfg.Logger()
-	log.Info("Hello from Cats tgbot!")
+	log.Info("Hello from Motorcycle Showcase tgbot!")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
