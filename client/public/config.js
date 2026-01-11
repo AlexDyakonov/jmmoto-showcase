@@ -1,4 +1,4 @@
 window.api = {
-  BOT_USERNAME: "mrussydev_bot",
+  BOT_USERNAME: "jmmoto_showcase_bot",
   API_URL: "http://localhost:8000",
 };
