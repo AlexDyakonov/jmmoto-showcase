@@ -37,11 +37,9 @@ declare global {
 export const getTelegramInitData = (): string | null => {
   try {
     if (window.Telegram?.WebApp?.initData) {
-      console.log('Telegram initData found:', window.Telegram.WebApp.initData);
       return window.Telegram.WebApp.initData;
     }
     
-    console.log('Telegram initData not available');
     return null;
   } catch (error) {
     console.error('Error getting Telegram initData:', error);
@@ -86,9 +84,5 @@ export const initializeTelegramWebApp = (): void => {
     
     tg.ready();
     tg.expand();
-    
-    console.log('Telegram WebApp initialized');
-  } else {
-    console.log('Telegram WebApp not available');
   }
 };

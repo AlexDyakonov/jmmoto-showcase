@@ -28,6 +28,16 @@ export interface FilterMotorcycle {
 
 import { getTelegramInitData } from '../utils/telegram';
 
+export interface User {
+  id: string;
+  isAdmin: boolean;
+  telegramId: number;
+  telegramUsername: string;
+  firstName: string;
+  lastName: string;
+  avatar: string;
+}
+
 // Получаем API URL из глобальной конфигурации
 const getApiBaseUrl = () => {
   return `${window.api.API_URL}/api/v1`;
@@ -43,9 +53,6 @@ const createApiHeaders = (): HeadersInit => {
   const initData = getTelegramInitData();
   if (initData) {
     headers['X-API-Token'] = initData;
-    console.log('Added X-API-Token header with initData');
-  } else {
-    console.log('No Telegram initData available, sending anonymous request');
   }
   
   return headers;
@@ -75,8 +82,6 @@ export const getMotorcycles = async (filters?: FilterMotorcycle): Promise<Motorc
       url += `?${queryString}`;
     }
     
-    console.log('Fetching motorcycles from:', url);
-    
     // Fetch запрос с Telegram initData
     const response = await fetch(url, {
       method: 'GET',
@@ -91,21 +96,16 @@ export const getMotorcycles = async (filters?: FilterMotorcycle): Promise<Motorc
     }
     
     const data = await response.json();
-    console.log('Raw API response:', data);
     
     // Обрабатываем ответ - Huma возвращает { body: [...] }
     if (data && typeof data === 'object' && 'body' in data && Array.isArray(data.body)) {
-      console.log('Found motorcycles in body:', data.body.length);
       return data.body;
     }
     
     // Fallback: если данные приходят напрямую как массив
     if (Array.isArray(data)) {
-      console.log('Found motorcycles as direct array:', data.length);
       return data;
     }
-    
-    console.warn('Unexpected response format:', data);
     return [];
     
   } catch (error) {
@@ -117,7 +117,6 @@ export const getMotorcycles = async (filters?: FilterMotorcycle): Promise<Motorc
 export const getMotorcycle = async (id: string): Promise<Motorcycle> => {
   try {
     const url = `${getApiBaseUrl()}/motorcycles/${id}`;
-    console.log('Fetching motorcycle from:', url);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -143,6 +142,38 @@ export const getMotorcycle = async (id: string): Promise<Motorcycle> => {
     
   } catch (error) {
     console.error('Error fetching motorcycle:', error);
+    throw error;
+  }
+};
+
+export const getCurrentUser = async (): Promise<User> => {
+  try {
+    const url = `${getApiBaseUrl()}/users/me`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: createApiHeaders(),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Требуется авторизация через Telegram');
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Обрабатываем ответ - Huma возвращает { body: {...} }
+    if (data && typeof data === 'object' && 'body' in data) {
+      return data.body;
+    }
+    
+    // Fallback: если данные приходят напрямую
+    return data;
+    
+  } catch (error) {
+    console.error('Error fetching current user:', error);
     throw error;
   }
 };
