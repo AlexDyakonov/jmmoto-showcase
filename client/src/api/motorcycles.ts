@@ -1,9 +1,18 @@
+export interface MotorcycleData {
+  mileage?: number;
+  mileage_unit?: string;
+  volume?: number;
+  volume_unit?: string;
+  frame_number?: string;
+  arrival_date?: string;
+}
+
 export interface Motorcycle {
   id: string;
   title: string;
   price: number;
   currency: string;
-  description?: string;
+  data?: MotorcycleData;
   status: 'available' | 'reserved' | 'sold' | 'draft';
   sourceUrl: string;
   photos?: MotorcyclePhoto[];
@@ -42,7 +51,7 @@ export interface PatchMotorcycle {
   title?: string;
   price?: number;
   currency?: string;
-  description?: string;
+  data?: MotorcycleData;
   status?: Motorcycle['status'];
 }
 

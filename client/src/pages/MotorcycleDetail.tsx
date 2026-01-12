@@ -79,8 +79,8 @@ export const MotorcycleDetail: React.FC = () => {
         updates.title = editValues.title;
       } else if (field === 'price' && editValues.price !== undefined) {
         updates.price = editValues.price;
-      } else if (field === 'description' && editValues.description !== undefined) {
-        updates.description = editValues.description;
+      } else if (field === 'arrival_date' && editValues.data?.arrival_date !== undefined) {
+        updates.data = editValues.data;
       }
 
       // Отправляем запрос на сервер
@@ -318,45 +318,85 @@ export const MotorcycleDetail: React.FC = () => {
             )}
           </div>
 
-          {/* Описание */}
-          {motorcycle.description && (
+          {/* Технические характеристики */}
+          {motorcycle.data && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-400 mb-2">Описание</label>
-              {user?.isAdmin && editingField === 'description' ? (
-                <div className="flex gap-2">
-                  <textarea
-                    value={editValues.description || ''}
-                    onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white min-h-[100px]"
-                    autoFocus
-                  />
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => handleEditSave('description')}
-                      disabled={saving}
-                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {saving ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        '✓'
-                      )}
-                    </button>
-                    <button
-                      onClick={handleEditCancel}
-                      className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                    >
-                      ✕
-                    </button>
+              <label className="block text-sm font-medium text-gray-400 mb-3">Технические характеристики</label>
+              <div className="space-y-2">
+                {motorcycle.data.mileage && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Пробег:</span>
+                    <span className="text-white font-medium">
+                      {motorcycle.data.mileage.toLocaleString()} {motorcycle.data.mileage_unit || 'км'}
+                    </span>
                   </div>
+                )}
+                {motorcycle.data.volume && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Объем двигателя:</span>
+                    <span className="text-white font-medium">
+                      {motorcycle.data.volume} {motorcycle.data.volume_unit || 'сс'}
+                    </span>
+                  </div>
+                )}
+                {motorcycle.data.frame_number && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Номер рамы:</span>
+                    <span className="text-white font-medium font-mono">{motorcycle.data.frame_number}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Дата прибытия */}
+          {motorcycle.data?.arrival_date && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-400 mb-2">Дата прибытия</label>
+              {user?.isAdmin && editingField === 'arrival_date' ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editValues.data?.arrival_date || ''}
+                    onChange={(e) => setEditValues({ 
+                      ...editValues, 
+                      data: { 
+                        ...editValues.data, 
+                        arrival_date: e.target.value 
+                      } 
+                    })}
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+                    autoFocus
+                    placeholder="Введите дату прибытия"
+                  />
+                  <button
+                    onClick={() => handleEditSave('arrival_date')}
+                    disabled={saving}
+                    className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      '✓'
+                    )}
+                  </button>
+                  <button
+                    onClick={handleEditCancel}
+                    className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                  >
+                    ✕
+                  </button>
                 </div>
               ) : (
-                <div className="flex items-start justify-between">
-                  <p className="text-gray-300 whitespace-pre-wrap">{motorcycle.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <span className="text-gray-400 text-sm">Ориентировочная дата прибытия во Владивосток:</span>
+                    <p className="text-white font-bold">{motorcycle.data.arrival_date}</p>
+                  </div>
                   {user?.isAdmin && (
                     <button
-                      onClick={() => handleEditStart('description')}
-                      className="text-gray-400 hover:text-white transition-colors ml-2 flex-shrink-0"
+                      onClick={() => handleEditStart('arrival_date')}
+                      className="text-gray-400 hover:text-white transition-colors ml-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />

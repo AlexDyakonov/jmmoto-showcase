@@ -15,7 +15,7 @@ type Motorcycle struct {
 }
 
 type MotorcycleParser interface {
-	ParseMotorcycle(url string) (*domain.MotorcycleData, error)
+	ParseMotorcycle(url string) (*domain.ParsedMotorcycleData, error)
 }
 
 func NewMotorcycle(motorcycleRepo repo.Motorcycle, storage repo.ImageStorage, parser MotorcycleParser) *Motorcycle {
@@ -99,21 +99,23 @@ func (m *Motorcycle) CreateMotorcycleFromURL(ctx Context, url string) (*domain.M
 		PhotoURLs: data.Images,
 	}
 
-	// Добавляем описание, если есть данные
+	// Добавляем структурированные данные, если есть
 	if data.Mileage > 0 || data.Volume > 0 || data.FrameNum != "" {
-		desc := ""
+		motorcycleData := &domain.MotorcycleData{}
+		
 		if data.Mileage > 0 {
-			desc += fmt.Sprintf("Пробег: %d км. ", data.Mileage)
+			motorcycleData.Mileage = &data.Mileage
+			motorcycleData.MileageUnit = "км"
 		}
 		if data.Volume > 0 {
-			desc += fmt.Sprintf("Объем: %d сс. ", data.Volume)
+			motorcycleData.Volume = &data.Volume
+			motorcycleData.VolumeUnit = "сс"
 		}
 		if data.FrameNum != "" {
-			desc += fmt.Sprintf("Номер рамы: %s. ", data.FrameNum)
+			motorcycleData.FrameNumber = data.FrameNum
 		}
-		if desc != "" {
-			createMotorcycle.Description = &desc
-		}
+		
+		createMotorcycle.Data = motorcycleData
 	}
 
 	return m.CreateMotorcycle(ctx, createMotorcycle)

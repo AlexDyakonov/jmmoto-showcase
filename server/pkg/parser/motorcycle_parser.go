@@ -17,7 +17,7 @@ func NewMotorcycleParser() *MotorcycleParser {
 	return &MotorcycleParser{}
 }
 
-func (p *MotorcycleParser) ParseMotorcycle(url string) (*domain.MotorcycleData, error) {
+func (p *MotorcycleParser) ParseMotorcycle(url string) (*domain.ParsedMotorcycleData, error) {
 	// Создаем HTTP клиент
 	client := &http.Client{}
 
@@ -47,7 +47,7 @@ func (p *MotorcycleParser) ParseMotorcycle(url string) (*domain.MotorcycleData, 
 		return nil, fmt.Errorf("ошибка парсинга HTML: %w", err)
 	}
 
-	data := &domain.MotorcycleData{}
+	data := &domain.ParsedMotorcycleData{}
 
 	// Получаем весь текст страницы один раз для парсинга
 	bodyText := doc.Find("body").Text()

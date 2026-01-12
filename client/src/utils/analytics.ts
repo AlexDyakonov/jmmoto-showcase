@@ -17,7 +17,7 @@ class SimpleAnalytics {
         return;
       }
 
-      const apiUrl = `${window.api?.API_URL || 'http://localhost:8000'}/api/v1`;
+      const apiUrl = `${window.api.API_URL}/api/v1`;
       
       await fetch(`${apiUrl}/analytics/visit`, {
         method: 'POST',
@@ -66,7 +66,7 @@ class SimpleAnalytics {
         return null;
       }
 
-      const apiUrl = `${window.api?.API_URL || 'http://localhost:8000'}/api/v1`;
+      const apiUrl = `${window.api.API_URL}/api/v1`;
       
       const response = await fetch(`${apiUrl}/analytics/my-stats`, {
         method: 'GET',

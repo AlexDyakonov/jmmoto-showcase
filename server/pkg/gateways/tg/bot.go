@@ -29,6 +29,8 @@ type Bot struct {
 
 	// Состояние ожидания ввода цены: userID -> motorcycleID
 	waitingPrice sync.Map
+	// Состояние ожидания ввода даты прибытия: userID -> motorcycleID
+	waitingArrivalDate sync.Map
 }
 
 func NewBot(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool) (*Bot, error) {
@@ -110,6 +112,12 @@ func (b *Bot) handleMessage(ctx context.Context, _ *bot.Bot, update *models.Upda
 	// Проверяем, ожидаем ли мы ввод цены
 	if motorcycleID, ok := b.waitingPrice.Load(update.Message.From.ID); ok {
 		b.handlePriceInput(ctx, update, motorcycleID.(string))
+		return
+	}
+	
+	// Проверяем, ожидаем ли мы ввод даты прибытия
+	if motorcycleID, ok := b.waitingArrivalDate.Load(update.Message.From.ID); ok {
+		b.handleArrivalDateInput(ctx, update, motorcycleID.(string))
 		return
 	}
 
@@ -226,26 +234,21 @@ func (b *Bot) handlePriceInput(ctx context.Context, update *models.Update, motor
 		return
 	}
 
-	// Обновляем цену и статус
-	status := domain.MotorcycleStatusAvailable
+	// Обновляем только цену пока
 	patch := &domain.PatchMotorcycle{
-		Price:  &price,
-		Status: &status,
+		Price: &price,
 	}
 
-	motorcycle, err := b.cases.Motorcycle.PatchMotorcycle(usecase.NewContext(ctx, user), motorcycleID, patch)
+	_, err = b.cases.Motorcycle.PatchMotorcycle(usecase.NewContext(ctx, user), motorcycleID, patch)
 	if err != nil {
 		slogx.FromCtxWithErr(ctx, err).Error("error updating motorcycle")
 		b.sendError(ctx, update.Message.Chat.ID, "Ошибка при обновлении мотоцикла.")
 		return
 	}
 
-	b.sendMessage(ctx, update.Message.Chat.ID, fmt.Sprintf(
-		"🎉 Мотоцикл успешно добавлен в каталог!\n\n🏍️ %s\n💰 Цена: %.0f ₽\n📊 Статус: %s\n\n✨ Теперь он доступен в мини-приложении!",
-		motorcycle.Title,
-		motorcycle.Price,
-		motorcycle.Status,
-	))
+	// Переходим к запросу даты прибытия
+	b.waitingArrivalDate.Store(update.Message.From.ID, motorcycleID)
+	b.sendMessage(ctx, update.Message.Chat.ID, "✅ Цена установлена!\n\n📅 Когда прибудет мотоцикл? (введите дату в любом формате, например: \"15 февраля\" или \"через неделю\")")
 }
 
 func (b *Bot) sendMessage(ctx context.Context, chatID int64, text string) {
@@ -263,6 +266,67 @@ func (b *Bot) sendError(ctx context.Context, chatID int64, text string) {
 }
 
 // getOrCreateUser получает пользователя из БД или создает нового из данных Telegram
+func (b *Bot) handleArrivalDateInput(ctx context.Context, update *models.Update, motorcycleID string) {
+	// Удаляем состояние ожидания
+	b.waitingArrivalDate.Delete(update.Message.From.ID)
+
+	// Получаем введенную дату (без дополнительной обработки, кроме базовой проверки)
+	arrivalDateText := update.Message.Text
+	
+	// Базовая проверка на SQL инъекцию - удаляем потенциально опасные символы
+	if len(arrivalDateText) > 200 || arrivalDateText == "" {
+		b.sendMessage(ctx, update.Message.Chat.ID, "❌ Дата слишком длинная или пустая.\n📅 Введите дату прибытия (например: \"15 февраля\" или \"через неделю\")")
+		b.waitingArrivalDate.Store(update.Message.From.ID, motorcycleID)
+		return
+	}
+
+	// Получаем или создаем пользователя
+	user, err := b.getOrCreateUser(ctx, update.Message.From)
+	if err != nil {
+		slogx.FromCtxWithErr(ctx, err).Error("error getting or creating user")
+		b.sendError(ctx, update.Message.Chat.ID, "Произошла ошибка при получении информации о вас.")
+		return
+	}
+
+	// Получаем текущие данные мотоцикла
+	motorcycle, err := b.cases.Motorcycle.GetMotorcycle(usecase.NewContext(ctx, user), motorcycleID)
+	if err != nil {
+		slogx.FromCtxWithErr(ctx, err).Error("error getting motorcycle")
+		b.sendError(ctx, update.Message.Chat.ID, "Ошибка при получении данных мотоцикла.")
+		return
+	}
+
+	// Обновляем данные мотоцикла с датой прибытия и устанавливаем статус available
+	var motorcycleData *domain.MotorcycleData
+	if motorcycle.Data != nil {
+		motorcycleData = motorcycle.Data
+	} else {
+		motorcycleData = &domain.MotorcycleData{}
+	}
+	motorcycleData.ArrivalDate = arrivalDateText
+
+	status := domain.MotorcycleStatusAvailable
+	patch := &domain.PatchMotorcycle{
+		Data:   motorcycleData,
+		Status: &status,
+	}
+
+	updatedMotorcycle, err := b.cases.Motorcycle.PatchMotorcycle(usecase.NewContext(ctx, user), motorcycleID, patch)
+	if err != nil {
+		slogx.FromCtxWithErr(ctx, err).Error("error updating motorcycle")
+		b.sendError(ctx, update.Message.Chat.ID, "Ошибка при обновлении мотоцикла.")
+		return
+	}
+
+	b.sendMessage(ctx, update.Message.Chat.ID, fmt.Sprintf(
+		"🎉 Мотоцикл успешно добавлен в каталог!\n\n🏍️ %s\n💰 Цена: %.0f ₽\n📅 Дата прибытия: %s\n📊 Статус: %s\n\n✨ Теперь он доступен в мини-приложении!",
+		updatedMotorcycle.Title,
+		updatedMotorcycle.Price,
+		arrivalDateText,
+		updatedMotorcycle.Status,
+	))
+}
+
 func (b *Bot) getOrCreateUser(ctx context.Context, from *models.User) (*domain.User, error) {
 	// Пытаемся получить пользователя
 	user, err := b.cases.User.GetByTelegramID(ctx, from.ID)

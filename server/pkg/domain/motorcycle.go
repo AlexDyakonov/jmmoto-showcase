@@ -11,12 +11,21 @@ const (
 	MotorcycleStatusSold      MotorcycleStatus = "sold"
 )
 
+type MotorcycleData struct {
+	Mileage      *int    `json:"mileage,omitempty"`
+	MileageUnit  string  `json:"mileage_unit,omitempty"`
+	Volume       *int    `json:"volume,omitempty"`
+	VolumeUnit   string  `json:"volume_unit,omitempty"`
+	FrameNumber  string  `json:"frame_number,omitempty"`
+	ArrivalDate  string  `json:"arrival_date,omitempty"`
+}
+
 type Motorcycle struct {
 	ID          string            `json:"id"`
 	Title       string            `json:"title"`
 	Price       float64           `json:"price"`
 	Currency    string            `json:"currency"`
-	Description *string           `json:"description,omitempty"`
+	Data        *MotorcycleData   `json:"data,omitempty"`
 	Status      MotorcycleStatus  `json:"status"`
 	SourceURL   string            `json:"sourceUrl"`
 	Photos      []*MotorcyclePhoto `json:"photos,omitempty"`
@@ -33,20 +42,20 @@ type MotorcyclePhoto struct {
 }
 
 type CreateMotorcycle struct {
-	Title       string   `json:"title"`
-	Price       float64  `json:"price"`
-	Currency    string   `json:"currency"`
-	Description *string  `json:"description,omitempty"`
+	Title       string           `json:"title"`
+	Price       float64          `json:"price"`
+	Currency    string           `json:"currency"`
+	Data        *MotorcycleData  `json:"data,omitempty"`
 	Status      MotorcycleStatus `json:"status"`
-	SourceURL   string   `json:"sourceUrl"`
-	PhotoURLs   []string `json:"photoUrls"`
+	SourceURL   string           `json:"sourceUrl"`
+	PhotoURLs   []string         `json:"photoUrls"`
 }
 
 type PatchMotorcycle struct {
 	Title       *string           `json:"title,omitempty"`
 	Price       *float64          `json:"price,omitempty"`
 	Currency    *string           `json:"currency,omitempty"`
-	Description *string           `json:"description,omitempty"`
+	Data        *MotorcycleData   `json:"data,omitempty"`
 	Status      *MotorcycleStatus `json:"status,omitempty"`
 }
 
@@ -64,7 +73,7 @@ type CreateMotorcycleFromURL struct {
 	URL string `json:"url"`
 }
 
-type MotorcycleData struct {
+type ParsedMotorcycleData struct {
 	Name     string
 	Year     int
 	Mileage  int

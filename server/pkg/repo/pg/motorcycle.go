@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -30,9 +31,18 @@ func (r *MotorcycleRepo) Create(ctx context.Context, motorcycle *domain.CreateMo
 	defer tx.Rollback(ctx)
 
 	// Создаем мотоцикл
+	var dataJSON []byte
+	if motorcycle.Data != nil {
+		var err error
+		dataJSON, err = json.Marshal(motorcycle.Data)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal data: %w", err)
+		}
+	}
+	
 	s := r.psql.Insert(`"motorcycle"`).
-		Columns("title", "price", "currency", "description", "status", "source_url").
-		Values(motorcycle.Title, motorcycle.Price, motorcycle.Currency, motorcycle.Description, motorcycle.Status, motorcycle.SourceURL).
+		Columns("title", "price", "currency", "data", "status", "source_url").
+		Values(motorcycle.Title, motorcycle.Price, motorcycle.Currency, dataJSON, motorcycle.Status, motorcycle.SourceURL).
 		Suffix("RETURNING id")
 
 	sql, args, err := s.ToSql()
@@ -86,8 +96,12 @@ func (r *MotorcycleRepo) Patch(ctx context.Context, id string, motorcycle *domai
 	if motorcycle.Currency != nil {
 		s = s.Set("currency", *motorcycle.Currency)
 	}
-	if motorcycle.Description != nil {
-		s = s.Set("description", *motorcycle.Description)
+	if motorcycle.Data != nil {
+		dataJSON, err := json.Marshal(motorcycle.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal data: %w", err)
+		}
+		s = s.Set("data", dataJSON)
 	}
 	if motorcycle.Status != nil {
 		s = s.Set("status", *motorcycle.Status)
@@ -103,7 +117,7 @@ func (r *MotorcycleRepo) Patch(ctx context.Context, id string, motorcycle *domai
 }
 
 func (r *MotorcycleRepo) Filter(ctx context.Context, filter *domain.FilterMotorcycle) ([]*domain.Motorcycle, error) {
-	s := r.psql.Select("m.id", "m.title", "m.price", "m.currency", "m.description", "m.status", "m.source_url", "m.created_at", "m.updated_at").
+	s := r.psql.Select("m.id", "m.title", "m.price", "m.currency", "m.data", "m.status", "m.source_url", "m.created_at", "m.updated_at").
 		From(`"motorcycle" m`)
 
 	if filter.ID != nil {
@@ -150,12 +164,13 @@ func (r *MotorcycleRepo) Filter(ctx context.Context, filter *domain.FilterMotorc
 
 	for rows.Next() {
 		var m domain.Motorcycle
+		var dataJSON []byte
 		err := rows.Scan(
 			&m.ID,
 			&m.Title,
 			&m.Price,
 			&m.Currency,
-			&m.Description,
+			&dataJSON,
 			&m.Status,
 			&m.SourceURL,
 			&m.CreatedAt,
@@ -164,6 +179,16 @@ func (r *MotorcycleRepo) Filter(ctx context.Context, filter *domain.FilterMotorc
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
+		
+		// Десериализуем JSON данные
+		if len(dataJSON) > 0 {
+			var data domain.MotorcycleData
+			if err := json.Unmarshal(dataJSON, &data); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal data: %w", err)
+			}
+			m.Data = &data
+		}
+		
 		motorcycles = append(motorcycles, &m)
 		motorcycleMap[m.ID] = &m
 	}
