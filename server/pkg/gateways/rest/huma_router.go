@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -15,7 +16,38 @@ import (
 	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/user"
 	"github.com/shampsdev/go-telegram-template/pkg/usecase"
 	"github.com/shampsdev/go-telegram-template/pkg/utils/slogx"
+	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
+
+
+func extractUserInfoFromToken(token string) string {
+	if token == "" {
+		return "anonymous"
+	}
+	
+	parsed, err := initdata.Parse(token)
+	if err != nil {
+		return "invalid_token"
+	}
+	
+	if parsed.User.ID == 0 {
+		return "no_user_data"
+	}
+	
+	userInfo := fmt.Sprintf("tg_id:%d", parsed.User.ID)
+	if parsed.User.Username != "" {
+		userInfo += fmt.Sprintf(" @%s", parsed.User.Username)
+	}
+	if parsed.User.FirstName != "" {
+		userInfo += fmt.Sprintf(" (%s", parsed.User.FirstName)
+		if parsed.User.LastName != "" {
+			userInfo += fmt.Sprintf(" %s", parsed.User.LastName)
+		}
+		userInfo += ")"
+	}
+	
+	return userInfo
+}
 
 func setupHumaRouter(api huma.API, useCases usecase.Cases) {
 	user.SetupHuma(api, useCases)
@@ -36,12 +68,19 @@ func NewHumaAPI(ctx context.Context, useCases usecase.Cases) (huma.API, *chi.Mux
 			
 			duration := time.Since(start)
 			
+			// Извлекаем информацию о пользователе из Telegram токена
+			userInfo := "anonymous"
+			if token := r.Header.Get("X-API-Token"); token != "" {
+				userInfo = extractUserInfoFromToken(token)
+			}
+			
 			log.Info("HTTP Request",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("query", r.URL.RawQuery),
 				slog.Int("status", ww.Status()),
 				slog.Duration("duration", duration),
+				slog.String("user", userInfo),
 				slog.String("user_agent", r.UserAgent()),
 				slog.String("remote_addr", r.RemoteAddr),
 			)
