@@ -1,0 +1,96 @@
+x-traefik-labels: &traefik-labels
+  traefik.enable: "true"
+  traefik.docker.network: jmmoto-prod
+
+x-common-deploy: &common-deploy
+  restart_policy:
+    condition: on-failure
+  mode: replicated
+  placement:
+    constraints:
+      - "node.labels.TAG==prod"
+  update_config:
+    parallelism: 1
+    delay: 5s
+    order: start-first
+  resources:
+    limits:
+      memory: 256M
+    reservations:
+      memory: 128M
+
+x-common-env: &common-env
+  DEBUG: ${DEBUG}
+  HTTP_PORT: ${HTTP_PORT}
+  HTTP_HOST: ${HTTP_HOST}
+
+x-db-env: &db-env
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_HOST: ${POSTGRES_HOST}
+  POSTGRES_PORT: ${POSTGRES_PORT}
+  POSTGRES_DB: ${POSTGRES_DB}
+
+x-telegram-env: &tg-env
+  WEBAPP_NAME: ${WEBAPP_NAME}
+  TG_BOT_TOKEN: ${TG_BOT_TOKEN}
+
+x-common-s3: &common-s3
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+  S3_SECRET_KEY: ${S3_SECRET_KEY}
+  S3_REGION: ${S3_REGION}
+  S3_BUCKET: ${S3_BUCKET}
+  S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+  S3_ROOT_DIRECTORY: ${S3_ROOT_DIRECTORY}
+
+services:
+  server:
+    image:  cr.shamps.dev/jmmoto/jmmoto-server:latest
+    deploy:
+      <<: *common-deploy
+      labels:
+        <<: *traefik-labels
+        traefik.http.routers.jmmoto-prod-server.entrypoints: https
+        traefik.http.routers.jmmoto-prod-server.rule: Host(`jmmoto.api.waitride.ru`)
+        traefik.http.routers.jmmoto-prod-server.tls.certresolver: letsEncrypt
+        traefik.http.services.jmmoto-prod-server.loadbalancer.server.port: "8000"
+    environment:
+      <<: [*db-env, *common-env, *common-s3, *tg-env]
+    networks:
+    - jmmoto-prod
+
+  tgbot:
+    image:  cr.shamps.dev/jmmoto/jmmoto-bot:latest
+    deploy:
+      <<: *common-deploy
+    environment:
+      <<: [*db-env, *common-env, *common-s3, *tg-env]
+    networks:
+    - jmmoto-prod
+
+
+  client:
+    image: cr.shamps.dev/jmmoto/jmmoto-client:latest
+    configs:
+      - source: client-config
+        target: /usr/share/nginx/html/config.js
+    deploy:
+      <<: *common-deploy
+      labels:
+        <<: *traefik-labels
+        traefik.http.routers.jmmoto-prod-client.entrypoints: https
+        traefik.http.routers.jmmoto-prod-client.rule: Host(`jmmoto.app.waitride.ru`)
+        traefik.http.routers.jmmoto-prod-client.tls.certresolver: letsEncrypt
+        traefik.http.services.jmmoto-prod-client.loadbalancer.server.port: "80"
+    networks:
+      - jmmoto-prod
+
+
+networks:
+  jmmoto-prod:
+    external: true
+
+configs:
+  client-config:
+    name: jmmoto-prod-miniapp-config-v1
+    external: true

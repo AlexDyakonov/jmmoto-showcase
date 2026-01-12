@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MotorcycleList } from './pages/MotorcycleList';
 import { MotorcycleDetail } from './pages/MotorcycleDetail';
-import { initializeTelegramWebApp, getTelegramUser, isTelegramWebAppAvailable } from './utils/telegram';
+import { initializeTelegramWebApp } from './utils/telegram';
 
 function AppContent() {
   // Инициализация Telegram WebApp
