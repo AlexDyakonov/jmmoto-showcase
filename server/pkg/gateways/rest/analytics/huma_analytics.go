@@ -2,51 +2,14 @@ package analytics
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/shampsdev/go-telegram-template/pkg/domain"
+	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/auth"
 	"github.com/shampsdev/go-telegram-template/pkg/usecase"
-	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
 
-var BotToken string
-
-func extractUserTGDataFromToken(token string) (*domain.UserTGData, error) {
-	if token == "" {
-		return nil, fmt.Errorf("missing X-API-Token header")
-	}
-
-	expIn := 2 * time.Hour
-	err := initdata.Validate(token, BotToken, expIn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate initdata: %w", err)
-	}
-
-	parsed, err := initdata.Parse(token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse initdata: %w", err)
-	}
-
-	return &domain.UserTGData{
-		TelegramID:       parsed.User.ID,
-		FirstName:        parsed.User.FirstName,
-		LastName:         parsed.User.LastName,
-		TelegramUsername: parsed.User.Username,
-		Avatar:           parsed.User.PhotoURL,
-	}, nil
-}
-
-func authenticateUserFromToken(ctx context.Context, token string, userCase *usecase.User) (*domain.User, error) {
-	tgUser, err := extractUserTGDataFromToken(token)
-	if err != nil {
-		return nil, err
-	}
-
-	return userCase.GetByTGData(ctx, tgUser)
-}
 
 type RecordVisitInput struct {
 	XAPIToken string  `header:"X-API-Token" required:"true" doc:"Telegram init data"`
@@ -63,7 +26,7 @@ type RecordVisitOutput struct {
 
 func RecordVisitHandler(analyticsCase *usecase.Analytics, userCase *usecase.User) func(ctx context.Context, input *RecordVisitInput) (*RecordVisitOutput, error) {
 	return func(ctx context.Context, input *RecordVisitInput) (*RecordVisitOutput, error) {
-		user, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		user, err := auth.AuthenticateFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
 			return nil, huma.Error401Unauthorized("authentication required", err)
 		}
@@ -91,7 +54,7 @@ type GetUserStatsOutput struct {
 
 func GetUserStatsHandler(analyticsCase *usecase.Analytics, userCase *usecase.User) func(ctx context.Context, input *GetUserStatsInput) (*GetUserStatsOutput, error) {
 	return func(ctx context.Context, input *GetUserStatsInput) (*GetUserStatsOutput, error) {
-		user, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		user, err := auth.AuthenticateFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
 			return nil, huma.Error401Unauthorized("authentication required", err)
 		}
@@ -115,14 +78,10 @@ type GetAllStatsOutput struct {
 
 func GetAllStatsHandler(analyticsCase *usecase.Analytics, userCase *usecase.User) func(ctx context.Context, input *GetAllStatsInput) (*GetAllStatsOutput, error) {
 	return func(ctx context.Context, input *GetAllStatsInput) (*GetAllStatsOutput, error) {
-		user, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		// Проверяем аутентификацию и админские права
+		_, err := auth.RequireAdminFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
-			return nil, huma.Error401Unauthorized("authentication required", err)
-		}
-
-		// Проверяем, что пользователь - админ
-		if !user.IsAdmin {
-			return nil, huma.Error403Forbidden("admin access required", fmt.Errorf("user is not an admin"))
+			return nil, huma.Error403Forbidden("admin access required", err)
 		}
 
 		stats, err := analyticsCase.GetAllUserStats(ctx)

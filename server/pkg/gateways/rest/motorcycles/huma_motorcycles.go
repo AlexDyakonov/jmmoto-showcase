@@ -2,51 +2,13 @@ package motorcycles
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/shampsdev/go-telegram-template/pkg/domain"
+	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/auth"
 	"github.com/shampsdev/go-telegram-template/pkg/usecase"
-	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
-
-var BotToken string
-
-func extractUserTGDataFromToken(token string) (*domain.UserTGData, error) {
-	if token == "" {
-		return nil, fmt.Errorf("missing X-API-Token header")
-	}
-
-	expIn := 2 * time.Hour
-	err := initdata.Validate(token, BotToken, expIn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate initdata: %w", err)
-	}
-
-	parsed, err := initdata.Parse(token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse initdata: %w", err)
-	}
-
-	return &domain.UserTGData{
-		TelegramID:       parsed.User.ID,
-		FirstName:        parsed.User.FirstName,
-		LastName:         parsed.User.LastName,
-		TelegramUsername: parsed.User.Username,
-		Avatar:           parsed.User.PhotoURL,
-	}, nil
-}
-
-func authenticateUserFromToken(ctx context.Context, token string, userCase *usecase.User) (*domain.User, error) {
-	tgUser, err := extractUserTGDataFromToken(token)
-	if err != nil {
-		return nil, err
-	}
-
-	return userCase.GetByTGData(ctx, tgUser)
-}
 
 // Public handlers
 
@@ -64,7 +26,7 @@ type GetMotorcyclesOutput struct {
 
 func GetMotorcyclesHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *GetMotorcyclesInput) (*GetMotorcyclesOutput, error) {
 	return func(ctx context.Context, input *GetMotorcyclesInput) (*GetMotorcyclesOutput, error) {
-		_, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		_, err := auth.AuthenticateFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
 			return nil, huma.Error401Unauthorized("authentication required", err)
 		}
@@ -113,7 +75,7 @@ type GetMotorcycleOutput struct {
 func GetMotorcycleHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *GetMotorcycleInput) (*GetMotorcycleOutput, error) {
 	return func(ctx context.Context, input *GetMotorcycleInput) (*GetMotorcycleOutput, error) {
 		// Проверяем аутентификацию пользователя
-		_, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		_, err := auth.AuthenticateFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
 			return nil, huma.Error401Unauthorized("authentication required", err)
 		}
@@ -140,13 +102,10 @@ type CreateMotorcycleFromURLOutput struct {
 
 func CreateMotorcycleFromURLHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *CreateMotorcycleFromURLInput) (*CreateMotorcycleFromURLOutput, error) {
 	return func(ctx context.Context, input *CreateMotorcycleFromURLInput) (*CreateMotorcycleFromURLOutput, error) {
-		user, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		// Проверяем аутентификацию и админские права
+		user, err := auth.RequireAdminFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
-			return nil, huma.Error401Unauthorized("failed to authenticate user", err)
-		}
-
-		if !user.IsAdmin {
-			return nil, huma.Error403Forbidden("admin access required", fmt.Errorf("user is not an admin"))
+			return nil, huma.Error403Forbidden("admin access required", err)
 		}
 
 		motorcycle, err := motorcycleCase.CreateMotorcycleFromURL(usecase.NewContext(ctx, user), input.Body.URL)
@@ -170,13 +129,10 @@ type PatchMotorcycleOutput struct {
 
 func PatchMotorcycleHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *PatchMotorcycleInput) (*PatchMotorcycleOutput, error) {
 	return func(ctx context.Context, input *PatchMotorcycleInput) (*PatchMotorcycleOutput, error) {
-		user, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		// Проверяем аутентификацию и админские права
+		user, err := auth.RequireAdminFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
-			return nil, huma.Error401Unauthorized("failed to authenticate user", err)
-		}
-
-		if !user.IsAdmin {
-			return nil, huma.Error403Forbidden("admin access required", fmt.Errorf("user is not an admin"))
+			return nil, huma.Error403Forbidden("admin access required", err)
 		}
 
 		motorcycle, err := motorcycleCase.PatchMotorcycle(usecase.NewContext(ctx, user), input.ID, &input.Body)
@@ -202,13 +158,10 @@ type UpdateMotorcycleStatusOutput struct {
 
 func UpdateMotorcycleStatusHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *UpdateMotorcycleStatusInput) (*UpdateMotorcycleStatusOutput, error) {
 	return func(ctx context.Context, input *UpdateMotorcycleStatusInput) (*UpdateMotorcycleStatusOutput, error) {
-		user, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		// Проверяем аутентификацию и админские права
+		user, err := auth.RequireAdminFromInput(ctx, input.XAPIToken, userCase)
 		if err != nil {
-			return nil, huma.Error401Unauthorized("failed to authenticate user", err)
-		}
-
-		if !user.IsAdmin {
-			return nil, huma.Error403Forbidden("admin access required", fmt.Errorf("user is not an admin"))
+			return nil, huma.Error403Forbidden("admin access required", err)
 		}
 
 		motorcycle, err := motorcycleCase.UpdateMotorcycleStatus(usecase.NewContext(ctx, user), input.ID, input.Body.Status)
