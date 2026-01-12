@@ -51,18 +51,24 @@ func authenticateUserFromToken(ctx context.Context, token string, userCase *usec
 // Public handlers
 
 type GetMotorcyclesInput struct {
-	Status   string  `query:"status" doc:"Filter by status (available, reserved, sold)"`
-	Title    string  `query:"title" doc:"Filter by title (partial match)"`
-	MinPrice float64 `query:"minPrice" doc:"Minimum price"`
-	MaxPrice float64 `query:"maxPrice" doc:"Maximum price"`
+	XAPIToken string  `header:"X-API-Token" required:"true" doc:"Telegram init data"`
+	Status    string  `query:"status" doc:"Filter by status (available, reserved, sold)"`
+	Title     string  `query:"title" doc:"Filter by title (partial match)"`
+	MinPrice  float64 `query:"minPrice" doc:"Minimum price"`
+	MaxPrice  float64 `query:"maxPrice" doc:"Maximum price"`
 }
 
 type GetMotorcyclesOutput struct {
 	Body []domain.Motorcycle `json:"body"`
 }
 
-func GetMotorcyclesHandler(motorcycleCase *usecase.Motorcycle) func(ctx context.Context, input *GetMotorcyclesInput) (*GetMotorcyclesOutput, error) {
+func GetMotorcyclesHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *GetMotorcyclesInput) (*GetMotorcyclesOutput, error) {
 	return func(ctx context.Context, input *GetMotorcyclesInput) (*GetMotorcyclesOutput, error) {
+		_, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		if err != nil {
+			return nil, huma.Error401Unauthorized("authentication required", err)
+		}
+
 		filter := &domain.FilterMotorcycle{
 			IncludePhotos: true,
 		}
@@ -96,15 +102,22 @@ func GetMotorcyclesHandler(motorcycleCase *usecase.Motorcycle) func(ctx context.
 }
 
 type GetMotorcycleInput struct {
-	ID string `path:"id" doc:"Motorcycle ID"`
+	XAPIToken string `header:"X-API-Token" required:"true" doc:"Telegram init data"`
+	ID        string `path:"id" doc:"Motorcycle ID"`
 }
 
 type GetMotorcycleOutput struct {
 	Body domain.Motorcycle `json:"body"`
 }
 
-func GetMotorcycleHandler(motorcycleCase *usecase.Motorcycle) func(ctx context.Context, input *GetMotorcycleInput) (*GetMotorcycleOutput, error) {
+func GetMotorcycleHandler(motorcycleCase *usecase.Motorcycle, userCase *usecase.User) func(ctx context.Context, input *GetMotorcycleInput) (*GetMotorcycleOutput, error) {
 	return func(ctx context.Context, input *GetMotorcycleInput) (*GetMotorcycleOutput, error) {
+		// Проверяем аутентификацию пользователя
+		_, err := authenticateUserFromToken(ctx, input.XAPIToken, userCase)
+		if err != nil {
+			return nil, huma.Error401Unauthorized("authentication required", err)
+		}
+
 		motorcycle, err := motorcycleCase.GetMotorcycle(ctx, input.ID)
 		if err != nil {
 			return nil, huma.Error404NotFound("motorcycle not found", err)
@@ -208,22 +221,28 @@ func UpdateMotorcycleStatusHandler(motorcycleCase *usecase.Motorcycle, userCase 
 }
 
 func SetupHuma(api huma.API, cases usecase.Cases) {
-	// Public endpoints
+	// Public endpoints (require authentication)
 	huma.Register(api, huma.Operation{
 		OperationID: "get-motorcycles",
 		Method:      http.MethodGet,
 		Path:        "/motorcycles",
-		Summary:     "Get all motorcycles",
+		Summary:     "Get all motorcycles (authenticated users only)",
 		Tags:        []string{"motorcycles"},
-	}, GetMotorcyclesHandler(cases.Motorcycle))
+		Security: []map[string][]string{
+			{"ApiKeyAuth": {}},
+		},
+	}, GetMotorcyclesHandler(cases.Motorcycle, cases.User))
 
 	huma.Register(api, huma.Operation{
 		OperationID: "get-motorcycle",
 		Method:      http.MethodGet,
 		Path:        "/motorcycles/{id}",
-		Summary:     "Get motorcycle by ID",
+		Summary:     "Get motorcycle by ID (authenticated users only)",
 		Tags:        []string{"motorcycles"},
-	}, GetMotorcycleHandler(cases.Motorcycle))
+		Security: []map[string][]string{
+			{"ApiKeyAuth": {}},
+		},
+	}, GetMotorcycleHandler(cases.Motorcycle, cases.User))
 
 	// Admin endpoints
 	huma.Register(api, huma.Operation{

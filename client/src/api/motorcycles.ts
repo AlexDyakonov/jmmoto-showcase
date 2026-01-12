@@ -26,9 +26,29 @@ export interface FilterMotorcycle {
   maxPrice?: number;
 }
 
+import { getTelegramInitData } from '../utils/telegram';
+
 // Получаем API URL из глобальной конфигурации
 const getApiBaseUrl = () => {
   return `${window.api.API_URL}/api/v1`;
+};
+
+// Создаем заголовки для API запросов с Telegram initData
+const createApiHeaders = (): HeadersInit => {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  // Добавляем Telegram initData если доступно
+  const initData = getTelegramInitData();
+  if (initData) {
+    headers['X-API-Token'] = initData;
+    console.log('Added X-API-Token header with initData');
+  } else {
+    console.log('No Telegram initData available, sending anonymous request');
+  }
+  
+  return headers;
 };
 
 export const getMotorcycles = async (filters?: FilterMotorcycle): Promise<Motorcycle[]> => {
@@ -57,15 +77,16 @@ export const getMotorcycles = async (filters?: FilterMotorcycle): Promise<Motorc
     
     console.log('Fetching motorcycles from:', url);
     
-    // Простой fetch запрос
+    // Fetch запрос с Telegram initData
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: createApiHeaders(),
     });
     
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Требуется авторизация через Telegram');
+      }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
@@ -100,12 +121,13 @@ export const getMotorcycle = async (id: string): Promise<Motorcycle> => {
     
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: createApiHeaders(),
     });
     
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Требуется авторизация через Telegram');
+      }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     

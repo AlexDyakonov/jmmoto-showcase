@@ -2,31 +2,7 @@ import { useEffect, useState } from 'react';
 import { getMotorcycles, Motorcycle, FilterMotorcycle } from './api/motorcycles';
 import { MotorcycleCard } from './components/MotorcycleCard';
 import { MotorcycleFilter } from './components/MotorcycleFilter';
-
-// Расширяем типы для window.Telegram
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp: {
-        initData: string;
-        initDataUnsafe: {
-          user?: {
-            id: number;
-            first_name: string;
-            last_name?: string;
-            username?: string;
-            photo_url?: string;
-          };
-        };
-        ready: () => void;
-        expand: () => void;
-        close: () => void;
-        setHeaderColor: (color: string) => void;
-        setBackgroundColor: (color: string) => void;
-      };
-    };
-  }
-}
+import { initializeTelegramWebApp, getTelegramUser, isTelegramWebAppAvailable } from './utils/telegram';
 
 function App() {
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
@@ -38,19 +14,15 @@ function App() {
   useEffect(() => {
     console.log('Initializing Telegram WebApp...');
     
-    if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      
-      // Настраиваем цвета обертки
-      tg.setHeaderColor('#0E0E0E');
-      tg.setBackgroundColor('#0E0E0E');
-      
-      tg.ready();
-      tg.expand();
-      
-      console.log('Telegram WebApp initialized');
-    } else {
-      console.log('Telegram WebApp not available');
+    // Инициализируем Telegram WebApp
+    initializeTelegramWebApp();
+    
+    // Выводим информацию о пользователе если доступна
+    if (isTelegramWebAppAvailable()) {
+      const user = getTelegramUser();
+      if (user) {
+        console.log('Telegram user:', user);
+      }
     }
   }, []);
 
@@ -113,12 +85,30 @@ function App() {
           <div className="text-center py-12">
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 max-w-md mx-auto">
               <p className="text-red-400 mb-4">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-              >
-                Обновить страницу
-              </button>
+              {error.includes('авторизация') ? (
+                <div className="space-y-3">
+                  <p className="text-gray-400 text-sm">
+                    Для просмотра мотоциклов необходимо открыть приложение через Telegram
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (window.Telegram?.WebApp) {
+                        window.Telegram.WebApp.close();
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  >
+                    Закрыть приложение
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                >
+                  Обновить страницу
+                </button>
+              )}
             </div>
           </div>
         ) : motorcycles.length === 0 ? (
