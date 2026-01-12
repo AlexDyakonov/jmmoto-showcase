@@ -85,9 +85,9 @@ func (b *Bot) handleCommandStart(ctx context.Context, _ *bot.Bot, update *models
 	// Приветственное сообщение
 	var text string
 	if user.IsAdmin {
-		text = "Пришлите ссылку с jmmoto"
+		text = "👋 Добро пожаловать в админ-панель!\n\n🔗 Отправьте ссылку с jmmoto.ru, чтобы добавить новый мотоцикл в каталог"
 	} else {
-		text = "Нажми кнопку Open чтобы смотреть ассортимент мотоциклов"
+		text = "🏍️ Добро пожаловать в каталог мотоциклов!\n\n📱 Нажмите кнопку \"Каталог\" чтобы посмотреть доступные мотоциклы"
 	}
 
 	b.sendMessage(ctx, update.Message.Chat.ID, text)
@@ -120,16 +120,16 @@ func (b *Bot) handleMessage(ctx context.Context, _ *bot.Bot, update *models.Upda
 			b.handleURL(ctx, update, text)
 			return
 		} else {
-			b.sendMessage(ctx, update.Message.Chat.ID, "Пожалуйста, отправьте ссылку с сайта jmmoto.ru")
+			b.sendMessage(ctx, update.Message.Chat.ID, "⚠️ Пожалуйста, отправьте ссылку с сайта jmmoto.ru")
 			return
 		}
 	}
 
 	// Для любого другого сообщения показываем соответствующую подсказку
 	if user.IsAdmin {
-		b.sendMessage(ctx, update.Message.Chat.ID, "Пришлите ссылку с jmmoto")
+		b.sendMessage(ctx, update.Message.Chat.ID, "🔗 Отправьте ссылку с jmmoto.ru для добавления мотоцикла")
 	} else {
-		b.sendMessage(ctx, update.Message.Chat.ID, "Нажми кнопку Open чтобы смотреть ассортимент мотоциклов")
+		b.sendMessage(ctx, update.Message.Chat.ID, "📱 Нажмите кнопку \"Каталог\" чтобы посмотреть доступные мотоциклы")
 	}
 }
 
@@ -160,14 +160,14 @@ func (b *Bot) handleURL(ctx context.Context, update *models.Update, urlText stri
 
 	// Проверяем, что пользователь - админ
 	if !user.IsAdmin {
-		b.sendMessage(ctx, update.Message.Chat.ID, "У вас нет прав для добавления мотоциклов.")
+		b.sendMessage(ctx, update.Message.Chat.ID, "🚫 У вас нет прав для добавления мотоциклов.\n\n📱 Используйте кнопку \"Каталог\" для просмотра доступных мотоциклов")
 		return
 	}
 
 	// Отправляем сообщение о начале обработки
 	msg, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "Парсинг страницы и загрузка фотографий...",
+		Text:   "🔄 Обрабатываю страницу и загружаю фотографии...",
 	})
 	if err != nil {
 		slogx.FromCtxWithErr(ctx, err).Error("error sending message")
@@ -181,7 +181,7 @@ func (b *Bot) handleURL(ctx context.Context, update *models.Update, urlText stri
 		b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			ChatID:    update.Message.Chat.ID,
 			MessageID: msg.ID,
-			Text:       fmt.Sprintf("Ошибка при парсинге страницы: %v", err),
+			Text:       fmt.Sprintf("❌ Ошибка при обработке страницы: %v", err),
 		})
 		return
 	}
@@ -193,7 +193,7 @@ func (b *Bot) handleURL(ctx context.Context, update *models.Update, urlText stri
 	b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		ChatID:    update.Message.Chat.ID,
 		MessageID: msg.ID,
-		Text: fmt.Sprintf("Мотоцикл создан со статусом draft:\n%s\n\nВведите цену в рублях (только число, например: 500000)",
+		Text: fmt.Sprintf("✅ Мотоцикл успешно добавлен:\n🏍️ %s\n\n💰 Введите цену в рублях (только число, например: 500000)",
 			motorcycle.Title),
 	})
 }
@@ -206,14 +206,14 @@ func (b *Bot) handlePriceInput(ctx context.Context, update *models.Update, motor
 	priceText := update.Message.Text
 	price, err := strconv.ParseFloat(priceText, 64)
 	if err != nil {
-		b.sendMessage(ctx, update.Message.Chat.ID, "Неверный формат цены. Введите число, например: 500000")
+		b.sendMessage(ctx, update.Message.Chat.ID, "❌ Неверный формат цены.\n💰 Введите число, например: 500000")
 		// Восстанавливаем состояние ожидания
 		b.waitingPrice.Store(update.Message.From.ID, motorcycleID)
 		return
 	}
 
 	if price <= 0 {
-		b.sendMessage(ctx, update.Message.Chat.ID, "Цена должна быть больше нуля.")
+		b.sendMessage(ctx, update.Message.Chat.ID, "❌ Цена должна быть больше нуля.\n💰 Введите корректную сумму")
 		b.waitingPrice.Store(update.Message.From.ID, motorcycleID)
 		return
 	}
@@ -241,7 +241,7 @@ func (b *Bot) handlePriceInput(ctx context.Context, update *models.Update, motor
 	}
 
 	b.sendMessage(ctx, update.Message.Chat.ID, fmt.Sprintf(
-		"Мотоцикл успешно добавлен в витрину!\n\n%s\nЦена: %.0f ₽\nСтатус: %s",
+		"🎉 Мотоцикл успешно добавлен в каталог!\n\n🏍️ %s\n💰 Цена: %.0f ₽\n📊 Статус: %s\n\n✨ Теперь он доступен в мини-приложении!",
 		motorcycle.Title,
 		motorcycle.Price,
 		motorcycle.Status,

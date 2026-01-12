@@ -151,7 +151,7 @@ func (p *MotorcycleParser) ParseMotorcycle(url string) (*domain.MotorcycleData, 
 
 			// Пропускаем логотипы, иконки и другие служебные изображения
 			srcLower := strings.ToLower(src)
-			skipPatterns := []string{"logo", "icon", "vite.svg", "favicon", "sprite", "placeholder"}
+			skipPatterns := []string{"logo", "icon", "vite.svg", "favicon", "sprite", "placeholder", "search-banner"}
 			shouldSkip := false
 			for _, pattern := range skipPatterns {
 				if strings.Contains(srcLower, pattern) {
