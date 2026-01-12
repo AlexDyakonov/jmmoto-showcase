@@ -1,36 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMotorcycle, getCurrentUser, Motorcycle, User } from '../api/motorcycles';
+import { getMotorcycle, updateMotorcycle, updateMotorcycleStatus, Motorcycle, PatchMotorcycle } from '../api/motorcycles';
 import { isTelegramWebAppAvailable } from '../utils/telegram';
 import { PhotoCarousel } from '../components/PhotoCarousel';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
-interface MotorcycleDetailProps {}
-
-export const MotorcycleDetail: React.FC<MotorcycleDetailProps> = () => {
+export const MotorcycleDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [motorcycle, setMotorcycle] = useState<Motorcycle | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Motorcycle>>({});
-
-  // Загружаем информацию о пользователе
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (err) {
-        console.error('Failed to load user:', err);
-        // Не устанавливаем ошибку, просто считаем пользователя неавторизованным
-        setUser(null);
-      }
-    };
-
-    loadUser();
-  }, []);
 
   // Загружаем мотоцикл
   useEffect(() => {
@@ -82,31 +66,61 @@ export const MotorcycleDetail: React.FC<MotorcycleDetailProps> = () => {
   };
 
   const handleEditSave = async (field: string) => {
-    if (!motorcycle || !editValues) return;
+    if (!motorcycle || !editValues || !user?.isAdmin || saving) return;
 
+    setSaving(true);
+    setError(null);
+    
     try {
-      // TODO: Реализовать API для обновления мотоцикла
-      // Временно обновляем локально
-      const updatedMotorcycle = { ...motorcycle, ...editValues };
+      // Подготавливаем данные для обновления
+      const updates: PatchMotorcycle = {};
+      
+      if (field === 'title' && editValues.title !== undefined) {
+        updates.title = editValues.title;
+      } else if (field === 'price' && editValues.price !== undefined) {
+        updates.price = editValues.price;
+      } else if (field === 'description' && editValues.description !== undefined) {
+        updates.description = editValues.description;
+      }
+
+      // Отправляем запрос на сервер
+      const updatedMotorcycle = await updateMotorcycle(motorcycle.id, updates);
+      
+      // Обновляем состояние
       setMotorcycle(updatedMotorcycle);
+      setEditValues(updatedMotorcycle);
       setEditingField(null);
     } catch (err) {
       console.error('Failed to save changes:', err);
-      setError('Не удалось сохранить изменения');
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить изменения');
+      
+      // Возвращаем исходные значения при ошибке
+      if (motorcycle) {
+        setEditValues(motorcycle);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleStatusChange = async (newStatus: Motorcycle['status']) => {
-    if (!motorcycle) return;
+    if (!motorcycle || !user?.isAdmin || saving) return;
 
+    setSaving(true);
+    setError(null);
+    
     try {
-      // TODO: Реализовать API для обновления статуса
-      // Временно обновляем локально
-      const updatedMotorcycle = { ...motorcycle, status: newStatus };
+      // Отправляем запрос на сервер
+      const updatedMotorcycle = await updateMotorcycleStatus(motorcycle.id, newStatus);
+      
+      // Обновляем состояние
       setMotorcycle(updatedMotorcycle);
+      setEditValues(updatedMotorcycle);
     } catch (err) {
       console.error('Failed to update status:', err);
-      setError('Не удалось обновить статус');
+      setError(err instanceof Error ? err.message : 'Не удалось обновить статус');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -222,9 +236,14 @@ export const MotorcycleDetail: React.FC<MotorcycleDetailProps> = () => {
                 />
                 <button
                   onClick={() => handleEditSave('title')}
-                  className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  disabled={saving}
+                  className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  ✓
+                  {saving ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    '✓'
+                  )}
                 </button>
                 <button
                   onClick={handleEditCancel}
@@ -264,9 +283,14 @@ export const MotorcycleDetail: React.FC<MotorcycleDetailProps> = () => {
                 />
                 <button
                   onClick={() => handleEditSave('price')}
-                  className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  disabled={saving}
+                  className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  ✓
+                  {saving ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    '✓'
+                  )}
                 </button>
                 <button
                   onClick={handleEditCancel}
@@ -309,9 +333,14 @@ export const MotorcycleDetail: React.FC<MotorcycleDetailProps> = () => {
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => handleEditSave('description')}
-                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                      disabled={saving}
+                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      ✓
+                      {saving ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        '✓'
+                      )}
                     </button>
                     <button
                       onClick={handleEditCancel}
@@ -362,12 +391,16 @@ export const MotorcycleDetail: React.FC<MotorcycleDetailProps> = () => {
                 <button
                   key={status}
                   onClick={() => handleStatusChange(status)}
-                  className={`px-4 py-2 rounded font-medium transition-colors ${
+                  disabled={saving}
+                  className={`px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
                     motorcycle.status === status
                       ? `${getStatusColor(status)} text-white`
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
+                  {saving && motorcycle.status !== status ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  ) : null}
                   {getStatusText(status)}
                 </button>
               ))}

@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { getMotorcycles, Motorcycle, FilterMotorcycle } from '../api/motorcycles';
 import { MotorcycleCard } from '../components/MotorcycleCard';
 import { MotorcycleFilter } from '../components/MotorcycleFilter';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 export const MotorcycleList: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: userLoading, isRegistering } = useCurrentUser();
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,6 +15,11 @@ export const MotorcycleList: React.FC = () => {
 
   // Загрузка мотоциклов
   useEffect(() => {
+    // Не загружаем мотоциклы, пока пользователь не загружен или регистрируется
+    if (userLoading || isRegistering || !user) {
+      return;
+    }
+
     let isCancelled = false;
     
     const loadMotorcycles = async () => {
@@ -28,6 +35,14 @@ export const MotorcycleList: React.FC = () => {
       } catch (err) {
         if (!isCancelled) {
           console.error('Failed to load motorcycles:', err);
+          
+          // Не показываем ошибки авторизации - они обрабатываются автоматически
+          if (err instanceof Error && err.message.includes('авторизация')) {
+            // Для ошибок авторизации просто оставляем загрузку
+            setLoading(true);
+            return;
+          }
+          
           setError(err instanceof Error ? err.message : 'Не удалось загрузить мотоциклы');
           setMotorcycles([]);
         }
@@ -44,7 +59,7 @@ export const MotorcycleList: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [filters]);
+  }, [filters, user, userLoading, isRegistering]);
 
   const handleFilterChange = (newFilters: FilterMotorcycle) => {
     setFilters(newFilters);
@@ -62,39 +77,25 @@ export const MotorcycleList: React.FC = () => {
         <MotorcycleFilter onFilterChange={handleFilterChange} />
 
         {/* Контент */}
-        {loading ? (
+        {(loading || userLoading || isRegistering) ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            <p className="mt-4 text-gray-400">Загрузка мотоциклов...</p>
+            <p className="mt-4 text-gray-400">
+              {isRegistering ? 'Регистрация пользователя...' : 
+               userLoading ? 'Инициализация...' : 
+               'Загрузка мотоциклов...'}
+            </p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 max-w-md mx-auto">
               <p className="text-red-400 mb-4">{error}</p>
-              {error.includes('авторизация') ? (
-                <div className="space-y-3">
-                  <p className="text-gray-400 text-sm">
-                    Для просмотра мотоциклов необходимо открыть приложение через Telegram
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (window.Telegram?.WebApp) {
-                        window.Telegram.WebApp.close();
-                      }
-                    }}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                  >
-                    Закрыть приложение
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                >
-                  Обновить страницу
-                </button>
-              )}
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Обновить страницу
+              </button>
             </div>
           </div>
         ) : motorcycles.length === 0 ? (

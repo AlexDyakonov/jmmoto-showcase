@@ -87,7 +87,9 @@ func (r *UserRepo) Filter(ctx context.Context, filter *domain.FilterUser) ([]*do
 }
 
 func (r *UserRepo) Patch(ctx context.Context, id string, user *domain.PatchUser) error {
-	s := r.psql.Update(`"user"`)
+	s := r.psql.Update(`"user"`).
+		Where(sq.Eq{"id": id})
+		
 	if user.TelegramUsername != nil {
 		s = s.Set("telegram_username", *user.TelegramUsername)
 	}
@@ -100,10 +102,12 @@ func (r *UserRepo) Patch(ctx context.Context, id string, user *domain.PatchUser)
 	if user.Avatar != nil {
 		s = s.Set("avatar", *user.Avatar)
 	}
+	
 	sql, args, err := s.ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build SQL: %w", err)
 	}
+	
 	_, err = r.db.Exec(ctx, sql, args...)
 	return err
 }

@@ -26,11 +26,27 @@ export interface FilterMotorcycle {
   maxPrice?: number;
 }
 
-import { getTelegramInitData } from '../utils/telegram';
+import { getTelegramInitData, getTelegramUser } from '../utils/telegram';
 
 export interface User {
   id: string;
   isAdmin: boolean;
+  telegramId: number;
+  telegramUsername: string;
+  firstName: string;
+  lastName: string;
+  avatar: string;
+}
+
+export interface PatchMotorcycle {
+  title?: string;
+  price?: number;
+  currency?: string;
+  description?: string;
+  status?: Motorcycle['status'];
+}
+
+export interface CreateUser {
   telegramId: number;
   telegramUsername: string;
   firstName: string;
@@ -174,6 +190,142 @@ export const getCurrentUser = async (): Promise<User> => {
     
   } catch (error) {
     console.error('Error fetching current user:', error);
+    throw error;
+  }
+};
+
+export const createUser = async (userData: CreateUser): Promise<User> => {
+  try {
+    const url = `${getApiBaseUrl()}/users/me`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: createApiHeaders(),
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Требуется авторизация через Telegram');
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Обрабатываем ответ - Huma возвращает { body: {...} }
+    if (data && typeof data === 'object' && 'body' in data) {
+      return data.body;
+    }
+    
+    // Fallback: если данные приходят напрямую
+    return data;
+    
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+};
+
+export const getCurrentUserOrCreate = async (): Promise<User> => {
+  try {
+    // Сначала пытаемся получить существующего пользователя
+    return await getCurrentUser();
+  } catch (error) {
+    // Если пользователь не найден (401), пытаемся создать нового
+    if (error instanceof Error && error.message.includes('авторизация')) {
+      // Получаем данные пользователя из Telegram
+      const telegramUser = getTelegramUser();
+      if (!telegramUser) {
+        throw new Error('Данные пользователя Telegram недоступны');
+      }
+
+      // Создаем нового пользователя
+      const newUserData: CreateUser = {
+        telegramId: telegramUser.id,
+        telegramUsername: telegramUser.username || '',
+        firstName: telegramUser.first_name,
+        lastName: telegramUser.last_name || '',
+        avatar: telegramUser.photo_url || '',
+      };
+
+      // Создаем пользователя и возвращаем результат
+      return await createUser(newUserData);
+    }
+    
+    // Если это другая ошибка, пробрасываем её дальше
+    throw error;
+  }
+};
+
+export const updateMotorcycle = async (id: string, updates: PatchMotorcycle): Promise<Motorcycle> => {
+  try {
+    const url = `${getApiBaseUrl()}/admin/motorcycle/${id}`;
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: createApiHeaders(),
+      body: JSON.stringify(updates),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Требуется авторизация через Telegram');
+      }
+      if (response.status === 403) {
+        throw new Error('Недостаточно прав для выполнения операции');
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Обрабатываем ответ - Huma возвращает { body: {...} }
+    if (data && typeof data === 'object' && 'body' in data) {
+      return data.body;
+    }
+    
+    // Fallback: если данные приходят напрямую
+    return data;
+    
+  } catch (error) {
+    console.error('Error updating motorcycle:', error);
+    throw error;
+  }
+};
+
+export const updateMotorcycleStatus = async (id: string, status: Motorcycle['status']): Promise<Motorcycle> => {
+  try {
+    const url = `${getApiBaseUrl()}/admin/motorcycle/${id}/status`;
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: createApiHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Требуется авторизация через Telegram');
+      }
+      if (response.status === 403) {
+        throw new Error('Недостаточно прав для выполнения операции');
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Обрабатываем ответ - Huma возвращает { body: {...} }
+    if (data && typeof data === 'object' && 'body' in data) {
+      return data.body;
+    }
+    
+    // Fallback: если данные приходят напрямую
+    return data;
+    
+  } catch (error) {
+    console.error('Error updating motorcycle status:', error);
     throw error;
   }
 };
