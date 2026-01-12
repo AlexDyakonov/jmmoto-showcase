@@ -30,3 +30,9 @@ type ImageStorage interface {
 	SaveImageByURL(ctx context.Context, url, key string) (string, error)
 	SaveImageByBytes(ctx context.Context, bytes []byte, key string) (string, error)
 }
+
+type Analytics interface {
+	RecordVisit(ctx context.Context, visit *domain.CreateUserVisit) error
+	GetUserStats(ctx context.Context, userID string) (*domain.UserVisitStats, error)
+	GetAllUserStats(ctx context.Context) ([]*domain.UserVisitStats, error)
+}

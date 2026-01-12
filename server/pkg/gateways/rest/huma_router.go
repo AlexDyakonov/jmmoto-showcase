@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/analytics"
 	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/motorcycles"
 	"github.com/shampsdev/go-telegram-template/pkg/gateways/rest/user"
 	"github.com/shampsdev/go-telegram-template/pkg/usecase"
@@ -52,6 +53,7 @@ func extractUserInfoFromToken(token string) string {
 func setupHumaRouter(api huma.API, useCases usecase.Cases) {
 	user.SetupHuma(api, useCases)
 	motorcycles.SetupHuma(api, useCases)
+	analytics.SetupHuma(api, useCases)
 }
 
 func NewHumaAPI(ctx context.Context, useCases usecase.Cases) (huma.API, *chi.Mux) {

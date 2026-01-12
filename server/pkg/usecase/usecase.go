@@ -13,11 +13,13 @@ import (
 type Cases struct {
 	User       *User
 	Motorcycle *Motorcycle
+	Analytics  *Analytics
 }
 
 func Setup(ctx context.Context, cfg *config.Config, db *pgxpool.Pool) Cases {
 	userRepo := pg.NewUserRepo(db)
 	motorcycleRepo := pg.NewMotorcycleRepo(db)
+	analyticsRepo := pg.NewAnalyticsRepo(db)
 
 	storage, err := s3.NewStorage(cfg.S3)
 	if err != nil {
@@ -28,9 +30,11 @@ func Setup(ctx context.Context, cfg *config.Config, db *pgxpool.Pool) Cases {
 
 	userCase := NewUser(ctx, userRepo, storage)
 	motorcycleCase := NewMotorcycle(motorcycleRepo, storage, motorcycleParser)
+	analyticsCase := NewAnalytics(analyticsRepo)
 
 	return Cases{
 		User:       userCase,
 		Motorcycle: motorcycleCase,
+		Analytics:  analyticsCase,
 	}
 }
