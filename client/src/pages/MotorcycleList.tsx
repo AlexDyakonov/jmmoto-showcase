@@ -69,6 +69,22 @@ export const MotorcycleList: React.FC = () => {
     navigate(`/motorcycle/${motorcycle.id}`);
   };
 
+  // Функция сортировки мотоциклов по статусу
+  const sortMotorcyclesByStatus = (motorcycles: Motorcycle[]) => {
+    const statusPriority = {
+      'available': 1,  // В продаже - наивысший приоритет
+      'reserved': 2,   // Бронь - средний приоритет  
+      'sold': 3,       // Продано - низкий приоритет
+      'draft': 4       // Черновик - самый низкий приоритет
+    };
+
+    return [...motorcycles].sort((a, b) => {
+      const priorityA = statusPriority[a.status] || 999;
+      const priorityB = statusPriority[b.status] || 999;
+      return priorityA - priorityB;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#0E0E0E] text-white">
       <div className="max-w-6xl mx-auto px-4 py-6">
@@ -113,7 +129,7 @@ export const MotorcycleList: React.FC = () => {
               Найдено мотоциклов: <span className="text-white font-medium">{motorcycles.length}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {motorcycles.map((motorcycle) => (
+              {sortMotorcyclesByStatus(motorcycles).map((motorcycle) => (
                 <MotorcycleCard 
                   key={motorcycle.id} 
                   motorcycle={motorcycle}

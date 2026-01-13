@@ -352,7 +352,6 @@ export const MotorcycleDetail: React.FC = () => {
           {/* Дата прибытия */}
           {motorcycle.data?.arrival_date && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-400 mb-2">Дата прибытия</label>
               {user?.isAdmin && editingField === 'arrival_date' ? (
                 <div className="flex gap-2">
                   <input
